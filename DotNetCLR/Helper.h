@@ -188,7 +188,7 @@ public:
 
     void getElement(Index i, void* pResult) const
     {
-        long internalIndex = i + lowerBound_;
+        long internalIndex = static_cast<long>(i + lowerBound_);
         ::SafeArrayGetElement(descriptor_, &internalIndex, pResult)
             >> Is< HrSuccess >()
             || throwX("OleVector::getElement: SafeArrayGetElement failed");
@@ -196,7 +196,7 @@ public:
 
     void setElement(Index i, void* pData)
     {
-        long internalIndex = i + lowerBound_;
+        long internalIndex = static_cast<long>(i + lowerBound_);
         ::SafeArrayPutElement(descriptor_, &internalIndex, pData)
             >> Is< HrSuccess >()
             || throwX("OleVector::setElement: SafeArrayPutElement failed");
