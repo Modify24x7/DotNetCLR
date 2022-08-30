@@ -1,5 +1,5 @@
 #pragma once
-#include "DotNetHelper.h"
+#include "mscorlib/Initialize.h"
 
 #include <unordered_map>
 #include <vector>
@@ -12,7 +12,7 @@
 // Load the assembly from disk
 /*void loadFromDisk(_AppDomainPtr pAppDomainPtr)
 {
-	auto dsdfs = pLoadFromDisk(pAppDomainPtr, L"FileToHex");
+	auto dsdfs = pLoadFromDisk(pAppDomainPtr, L"ProxyGenerator");
 
 	_MethodInfo* dada;
 	dsdfs->get_EntryPoint(&dada);
@@ -25,73 +25,85 @@
 	dada->Invoke_3(targetObject0, vtArg0, &result0);
 }*/
 
-int main(int argc)
+_MethodInfo* WriteLine(ICorRuntimeHost* pCorRuntimeHost)
 {
-	ICorRuntimeHost* pCorRuntimeHost = NULL;
-
 	HRESULT hr;
 
-	// start
-	_AppDomainPtr pAppDomainPtr = pGetAppDomainPtr(L"v4.0.30319", pCorRuntimeHost);
-	if (pAppDomainPtr == NULL)
-	{
-		// Release
-		pCleanup(pCorRuntimeHost);
-		return 0;
-	}
+	_TypePtr methodfindInType = System::Console::_Console;
+	bstr_t methodName = L"WriteLine";
 
-	// get mscorlib
-	_AssemblyPtr pAssemblyPtr = pGetCoreLibAssembly(pAppDomainPtr);
+	_TypePtr argumentType = System::String::_String;
 
-	Initialize(pAssemblyPtr);
+	IUnknown* methodArgumentType(argumentType);
+	variant_t methodArgumentTypes[] = { methodArgumentType };
 
-	// find type
-	_TypePtr pConsole = pFind_Type(pAssemblyPtr, "System.Console");
-	_TypePtr pString = pFind_Type(pAssemblyPtr, "System.String");
+	_MethodInfo* methodInfo;
 
-	bstr_t mName = L"WriteLine";
-	_MethodInfo* mInfo;
-
-
-	// type
-	IUnknown* typ(pString);
-	variant_t typs[] = { typ };
-
-	// get method info
-	hr = pConsole->GetMethod_5(mName, pToSafeArray(typs, GetArraySize(typs), VT_UNKNOWN), &mInfo);
+	hr = methodfindInType->GetMethod_5(methodName, pToSafeArray(methodArgumentTypes, GetArraySize(methodArgumentTypes), VT_UNKNOWN), &methodInfo);
 	if (FAILED(hr))
 	{
 		wprintf(L"GetMethod_5 failed w/hr 0x%08lx\n", hr);
 
 		// Release
 		pCleanup(pCorRuntimeHost);
-		return 0;
+		return nullptr;
 	}
+	return methodInfo;
+}
+
+variant_t Invoke_WriteLine(ICorRuntimeHost* pCorRuntimeHost)
+{
+	HRESULT hr;
+
+	_TypePtr pConsole = System::Console::_Console;
 
 	variant_t targetObject(static_cast<IUnknown*>(pConsole));
-	variant_t vtArg[] = { variant_t(L"Hello") };
-	variant_t result;
+	variant_t arguments[] = { variant_t(L"Hello World") };
+	variant_t outputResult;
 
-	// invoke method to write to console
-	hr = mInfo->Invoke_3(targetObject, pToSafeArray(vtArg, GetArraySize(vtArg), VT_VARIANT), &result);
-	if (FAILED(hr))
+	_MethodInfo* methodInfo = WriteLine(pCorRuntimeHost);
+	if (methodInfo != nullptr)
 	{
-		wprintf(L"Invoke_3 failed w/hr 0x%08lx\n", hr);
+		// invoke method to write to console
+		hr = methodInfo->Invoke_3(targetObject, pToSafeArray(arguments, GetArraySize(arguments), VT_VARIANT), &outputResult);
+		if (FAILED(hr))
+		{
+			wprintf(L"Invoke_3 failed w/hr 0x%08lx\n", hr);
 
+			// Release
+			pCleanup(pCorRuntimeHost);
+		}
+	}
+	return outputResult;
+}
+
+ICorRuntimeHost* Initialize(LPCUWSTR dotNetVersion)
+{
+	ICorRuntimeHost* pCorRuntimeHost = NULL;
+
+	// start
+	_AppDomainPtr pAppDomainPtr = pGetAppDomainPtr(dotNetVersion, pCorRuntimeHost);
+	if (pAppDomainPtr == NULL)
+	{
 		// Release
 		pCleanup(pCorRuntimeHost);
-		return 0;
+		return nullptr;
 	}
 
-	// argument
-	wchar_t* argument = L"World";
-	variant_t vtArg2[] = { argument };
+	// get mscorlib
+	_AssemblyPtr pAssemblyPtr = pGetCoreLibAssembly(pAppDomainPtr);
+	
+	// initialize mscorlib
+	Initialize(pAssemblyPtr);
 
-	// invoke method to write to console
-	pInvoke_Public_Static_Method(pConsole, mName, vtArg2, GetArraySize(vtArg2));
+	return pCorRuntimeHost;
+}
 
-	// Load the assembly from disk
-	// loadFromDisk(pAppDomainPtr);
+int main(int argc)
+{
+	ICorRuntimeHost* pCorRuntimeHost = Initialize(L"v4.0.30319");
+
+	Invoke_WriteLine(pCorRuntimeHost);
 
 	// Release
 	pCleanup(pCorRuntimeHost);
